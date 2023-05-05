@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.amazon.aws.transfers.sql_to_s3 import SqlToS3Operator
 from airflow.providers.amazon.aws.transfers.s3_to_redshift import S3ToRedshiftOperator
 from airflow.models import Variable
@@ -24,7 +25,7 @@ dag = DAG(
     }
 )
 
-schema = "keeyong"
+schema = "dlsefira"
 table = "nps"
 s3_bucket = "grepp-data-engineering"
 s3_key = schema + "-" + table       # s3_key = schema + "/" + table
@@ -56,4 +57,11 @@ s3_to_redshift_nps = S3ToRedshiftOperator(
     dag = dag
 )
 
-mysql_to_s3_nps >> s3_to_redshift_nps
+trigger_dag = TriggerDagRunOperator(
+    task_id = "trigger_B",
+    trigger_dag_id = "Build_Summary",
+    execution_date = "{{ execution_date }}",
+    reset_dag_run = True
+)
+
+mysql_to_s3_nps >> s3_to_redshift_nps >> trigger_dag
